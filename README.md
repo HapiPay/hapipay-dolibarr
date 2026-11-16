@@ -16,7 +16,7 @@ Aucun secret dans ce dépôt : chaque utilisateur saisit sa propre clé d'API et
 
 ## Installation
 
-1. Zippez le dossier `hapipay/` (`zip -r module_hapipay-0.1.0.zip hapipay`) et installez-le depuis Configuration → Modules/Applications → Déployer/Installer un module externe. Ou copiez le dossier dans `htdocs/custom/`.
+1. Téléchargez `module_hapipay-0.1.0.zip` depuis la [dernière version](https://github.com/HapiPay/hapipay-dolibarr/releases/latest) et installez-le depuis Configuration → Modules/Applications → Déployer/Installer un module externe. Gardez ce nom de fichier : Dolibarr l'exige. Vous pouvez aussi copier le dossier `hapipay/` dans `htdocs/custom/`.
 2. Activez le module HapiPay (famille « Interfaces »).
 3. Dans sa configuration :
    - **Adresse de l'API** : laissez vide pour `https://pay.scigroup.td/api/v1` (sans redirection).
