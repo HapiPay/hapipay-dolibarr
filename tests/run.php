@@ -1,0 +1,67 @@
+<?php
+/**
+ * php tests/run.php, sans Dolibarr.
+ * Avec HAPIPAY_API_URL et HAPIPAY_API_KEY (clé de test) : essai réel contre une instance HapiPay.
+ */
+define('HAPIPAY_TESTS', true);
+require dirname(__DIR__) . '/hapipay/class/hapipayapi.class.php';
+
+$failures = 0;
+$check = function ($label, $ok) use (&$failures) {
+    echo ($ok ? '  ok      ' : '  ÉCHEC   ') . $label . "\n";
+    $failures += $ok ? 0 : 1;
+};
+
+echo "Signatures des webhooks\n";
+$secret = 'whsec_essai';
+$body = '{"evenement":"paiement.reussi","data":{"reference":"dol-0a1b2c-fac-12-x7y8z9"}}';
+$t = time();
+$good = hash_hmac('sha256', $t . '.' . $body, $secret);
+$check('signature valide acceptée', HapiPayApi::validSignature("t=$t,v1=$good", $body, $secret));
+$check('mauvais secret refusé', !HapiPayApi::validSignature("t=$t,v1=$good", $body, 'autre'));
+$check('corps modifié refusé', !HapiPayApi::validSignature("t=$t,v1=$good", $body . ' ', $secret));
+$old = $t - 600;
+$check('horodatage trop ancien refusé', !HapiPayApi::validSignature("t=$old,v1=" . hash_hmac('sha256', $old . '.' . $body, $secret), $body, $secret));
+$check('deux v1 après un changement de secret : l\'un suffit', HapiPayApi::validSignature("t=$t,v1=" . hash_hmac('sha256', $t . '.' . $body, 'nouveau') . ",v1=$good", $body, $secret));
+$check('en-tête vide refusé', !HapiPayApi::validSignature('', $body, $secret));
+$check('secret non configuré refusé', !HapiPayApi::validSignature("t=$t,v1=$good", $body, ''));
+
+echo "\nMontants écrits pour une personne (FCFA pour XAF et XOF)\n";
+$check('XAF écrit FCFA', HapiPayApi::formatAmount(25000, 'XAF') === "25\u{202F}000 FCFA");
+$check('XOF écrit FCFA', HapiPayApi::formatAmount(1500, 'xof') === "1\u{202F}500 FCFA");
+$check('les autres devises gardent leur code', HapiPayApi::formatAmount(5000, 'MGA') === "5\u{202F}000 MGA");
+
+echo "\nTexte de l'API rendu inoffensif dans les traductions\n";
+$check('balises et guillemets retirés', HapiPayApi::plain('<a href="x">Boutique</a>') === 'a href=xBoutique/a');
+$check('texte ordinaire intact', HapiPayApi::plain('Association Démo') === 'Association Démo');
+$check('l\'en-tête User-Agent porte la version', HapiPayApi::VERSION !== '');
+
+echo "\nAdresse de l'API\n";
+$baseUrl = new ReflectionProperty(HapiPayApi::class, 'baseUrl');
+$check('réglage vide : adresse de production', $baseUrl->getValue(new HapiPayApi('', 'hpc_test_x')) === HapiPayApi::DEFAULT_URL);
+$check('site déduit de l\'API de production', (new HapiPayApi('', 'k'))->siteUrl('portail/register') === 'https://pay.scigroup.td/portail/register');
+$check('site d\'une autre instance', (new HapiPayApi('https://exemple.test/api/v1/', 'k'))->siteUrl('/portail') === 'https://exemple.test/portail');
+$check('barre finale retirée', $baseUrl->getValue(new HapiPayApi(' https://exemple.test/api/v1/ ', 'hpc_test_x')) === 'https://exemple.test/api/v1');
+
+$url = getenv('HAPIPAY_API_URL');
+$key = getenv('HAPIPAY_API_KEY');
+if ($url && $key) {
+    echo "\nAPI réelle : $url\n";
+    $api = new HapiPayApi($url, $key);
+    $check('clé de test reconnue comme telle', $api->isTest());
+    $who = $api->whoami();
+    $check('la clé ouvre le compte (' . ($who['ok'] ? $who['data']['name'] : $who['message']) . ')', $who['ok']);
+    $link = $api->createLink(['reference' => 'dol-0a1b2c-fac-42-essai1', 'titre' => 'Facture FA2611-0042', 'montant' => 15000, 'devise' => 'XAF', 'usage_unique' => true, 'url_retour' => 'http://dolibarr.test/custom/hapipay/public/return.php?r=dol-0a1b2c-fac-42-essai1', 'langue' => 'fr']);
+    $check('page de paiement créée' . ($link['ok'] ? ' : ' . $link['data']['url'] : ' : ' . $link['message']), $link['ok']);
+    if ($link['ok']) {
+        $state = $api->linkState($link['data']['code']);
+        $check('la page est ouverte, au bon montant', $state['ok'] && $state['data']['etat'] === 'ouvert' && $state['data']['montant'] === 15000 && $state['data']['reference'] === 'dol-0a1b2c-fac-42-essai1');
+    }
+    $bad = $api->createLink(['reference' => 'dol-0a1b2c-fac-43-essai2', 'montant' => 100, 'devise' => 'JPY', 'usage_unique' => true]);
+    $check('une devise refusée remonte une erreur claire', !$bad['ok'] && $bad['status'] === 422);
+    $wrong = (new HapiPayApi($url, 'hpc_test_mauvaise'))->whoami();
+    $check('une clé inconnue est refusée (401)', !$wrong['ok'] && $wrong['status'] === 401);
+}
+
+echo $failures ? "\n$failures échec(s).\n" : "\nTout est bon.\n";
+exit($failures ? 1 : 0);
