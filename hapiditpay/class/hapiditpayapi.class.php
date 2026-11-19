@@ -15,7 +15,7 @@ class HapiditPayApi
     const DEFAULT_URL = 'https://hapiditpay.com/api/v1';
 
     /** Version du module, envoyée dans l'en-tête User-Agent. */
-    const VERSION = '0.2.0';
+    const VERSION = '0.2.1';
 
     /** @var string */
     private $baseUrl;

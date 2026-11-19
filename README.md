@@ -16,7 +16,7 @@ Aucun secret dans ce dépôt : chaque utilisateur saisit sa propre clé d'API et
 
 ## Installation
 
-1. Téléchargez `module_hapiditpay-0.2.0.zip` depuis la [dernière version](https://github.com/HapiditPay/hapiditpay-dolibarr/releases/latest) et installez-le depuis Configuration → Modules/Applications → Déployer/Installer un module externe. Gardez ce nom de fichier : Dolibarr l'exige. Vous pouvez aussi copier le dossier `hapiditpay/` dans `htdocs/custom/`.
+1. Téléchargez `module_hapiditpay-0.2.1.zip` depuis la [dernière version](https://github.com/HapiditPay/hapiditpay-dolibarr/releases/latest) et installez-le depuis Configuration → Modules/Applications → Déployer/Installer un module externe. Gardez ce nom de fichier : Dolibarr l'exige. Vous pouvez aussi copier le dossier `hapiditpay/` dans `htdocs/custom/`.
 2. Activez le module HapiditPay (famille « Interfaces »).
 3. Dans sa configuration :
    - **Adresse de l'API** : laissez vide pour `https://hapiditpay.com/api/v1` (sans redirection).
@@ -25,20 +25,6 @@ Aucun secret dans ce dépôt : chaque utilisateur saisit sa propre clé d'API et
    - **Compte bancaire** : celui qui représente votre compte opérateur (Airtel Money, par exemple).
 
 La devise principale de Dolibarr doit être celle de votre compte HapiditPay (FCFA, ariary, francs congolais). HapiditPay encaisse des montants entiers.
-
-## Mise à jour depuis la version 0.1.x (ancien nom « HapiPay »)
-
-Jusqu'à la 0.1.0, le module s'appelait HapiPay et vivait dans `htdocs/custom/hapipay/`. Il garde le même numéro (527400) ; les réglages et l'historique des paiements sont repris.
-
-1. Choisissez un moment sans paiement en cours (un client parti payer revient sur l'ancienne adresse de retour).
-2. Supprimez le dossier `htdocs/custom/hapipay/` sans désactiver l'ancien module : la désactivation ne perd rien, mais elle n'est pas nécessaire. Les deux dossiers ne doivent pas cohabiter, ils portent le même numéro.
-3. Installez `module_hapiditpay-0.2.0.zip` (ou copiez le dossier `hapiditpay/`), puis activez le module HapiditPay. À l'activation :
-   - les réglages `HAPIPAY_*` (adresse de l'API, clé et secret chiffrés, compte bancaire, mode de règlement) sont recopiés sous `HAPIDITPAY_*` pour chaque entité, puis effacés ; un réglage déjà fait sous le nouveau nom est gardé ;
-   - les réglages d'activation de l'ancien module (`MAIN_MODULE_HAPIPAY*`) sont effacés ;
-   - la table `llx_hapipay_page` devient `llx_hapiditpay_page`, avec ses index ;
-   - le mode de règlement `HPAY` garde son code (les règlements déjà enregistrés s'y rapportent) et prend le nom « HapiditPay (mobile money) ».
-4. L'adresse du webhook change : `custom/hapiditpay/public/webhook.php?e=…`. Dans votre espace HapiditPay (Développeurs → Webhooks), modifiez l'adresse du webhook existant pour celle affichée dans la configuration du module (son secret reste le même), ou créez-en un nouveau et copiez son secret dans le module.
-5. Si vous aviez saisi l'ancienne adresse de l'API, remplacez-la par `https://hapiditpay.com/api/v1`, ou laissez le champ vide. Les clés `hpc_…` deviennent `hdp_…` : enregistrez la nouvelle clé que vous donne votre espace HapiditPay.
 
 ## Ce qui est payé
 
@@ -49,7 +35,7 @@ Les commandes et les adhésions gardent leurs moyens de paiement habituels : Hap
 
 ## Essais
 
-Testé de bout en bout avec Dolibarr 22.0.5 et une instance HapiditPay locale, en mode test : paiement d'une facture et d'un don (règlement, facture et don classés payés, écriture bancaire), webhook signé reçu, faux webhook refusé (401), webhook rejoué sans double enregistrement, montant différent mis de côté sans toucher à la facture, référence d'une autre boutique ignorée, montant à centimes refusé avec un message, page de commande sans bouton HapiditPay. La version 0.2.0 (changement de nom) n'a pas encore été rejouée de bout en bout dans Dolibarr : seuls `tests/run.php`, la syntaxe PHP et la reprise des réglages et de la table (sur une base d'essai simulée) ont été vérifiés.
+Testé de bout en bout avec Dolibarr 22.0.5 et une instance HapiditPay locale, en mode test : paiement d'une facture et d'un don (règlement, facture et don classés payés, écriture bancaire), webhook signé reçu, faux webhook refusé (401), webhook rejoué sans double enregistrement, montant différent mis de côté sans toucher à la facture, référence d'une autre boutique ignorée, montant à centimes refusé avec un message, page de commande sans bouton HapiditPay. La version 0.2.0 (changement de nom) n'a pas encore été rejouée de bout en bout dans Dolibarr : seuls `tests/run.php` et la syntaxe PHP ont été vérifiés.
 
 ## Tests
 
@@ -61,7 +47,8 @@ Le numéro de module (527400) est provisoire : demander un numéro réservé à 
 
 ## Versions
 
-- **0.2.0** : le module HapiPay devient HapiditPay. Dossier `hapiditpay/`, réglages `HAPIDITPAY_*`, table `llx_hapiditpay_page`, en-tête de webhook `HapiditPay-Signature`, User-Agent `HapiditPay-Dolibarr/0.2.0`, clés d'API `hdp_…` et `hdp_test_…`, service sur `https://hapiditpay.com`. Les réglages, la table et le mode de règlement de la 0.1.x sont repris à l'activation (voir « Mise à jour depuis la version 0.1.x »).
+- **0.2.1** : retrait du code de reprise des réglages d'une version antérieure : une installation précédente se reconfigure depuis la page de réglages.
+- **0.2.0** : changement de nom : le module s'appelle désormais HapiditPay. Dossier `hapiditpay/`, réglages `HAPIDITPAY_*`, table `llx_hapiditpay_page`, en-tête de webhook `HapiditPay-Signature`, clés d'API `hdp_…` et `hdp_test_…`, service sur `https://hapiditpay.com`.
 - **0.1.0** : première version. Factures et dons ; Dolibarr 22.0.5.
 
 ## Licence
