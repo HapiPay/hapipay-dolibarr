@@ -1,9 +1,9 @@
 <?php
 /**
- * Réception des webhooks HapiPay. La signature HapiPay-Signature tient lieu
+ * Réception des webhooks HapiditPay. La signature HapiditPay-Signature tient lieu
  * d'authentification : sans elle, rien n'est modifié.
  *
- * Copyright (C) HapiPay
+ * Copyright (C) Hapidit Group
  * @license GPL-3.0-or-later
  */
 
@@ -28,7 +28,7 @@ if (!defined('NOREQUIREAJAX')) {
 if (!defined('NOBROWSERNOTIF')) {
     define('NOBROWSERNOTIF', 1);
 }
-// Multisociété : l'entité est dans l'adresse déclarée chez HapiPay (?e=…).
+// Multisociété : l'entité est dans l'adresse déclarée chez HapiditPay (?e=…).
 if (!defined('DOLENTITY')) {
     define('DOLENTITY', (isset($_GET['e']) && ctype_digit((string) $_GET['e'])) ? (int) $_GET['e'] : 1);
 }
@@ -45,13 +45,13 @@ if (!$res) {
     exit;
 }
 
-require_once __DIR__ . '/../class/hapipaypages.class.php';
+require_once __DIR__ . '/../class/hapiditpaypages.class.php';
 
 /**
  * @param int   $status
  * @param array $body
  */
-function hapipay_reply($status, array $body)
+function hapiditpay_reply($status, array $body)
 {
     http_response_code($status);
     header('Content-Type: application/json');
@@ -59,18 +59,18 @@ function hapipay_reply($status, array $body)
     exit;
 }
 
-if (!isModEnabled('hapipay')) {
-    hapipay_reply(404, ['message' => 'Module HapiPay désactivé.']);
+if (!isModEnabled('hapiditpay')) {
+    hapiditpay_reply(404, ['message' => 'Module HapiditPay désactivé.']);
 }
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    hapipay_reply(405, ['message' => 'POST attendu.']);
+    hapiditpay_reply(405, ['message' => 'POST attendu.']);
 }
 
 $raw = (string) file_get_contents('php://input');
-$header = isset($_SERVER['HTTP_HAPIPAY_SIGNATURE']) ? (string) $_SERVER['HTTP_HAPIPAY_SIGNATURE'] : '';
+$header = isset($_SERVER['HTTP_HAPIDITPAY_SIGNATURE']) ? (string) $_SERVER['HTTP_HAPIDITPAY_SIGNATURE'] : '';
 
-if (!HapiPayApi::validSignature($header, $raw, HapiPayPages::secret('HAPIPAY_WEBHOOK_SECRET'))) {
-    hapipay_reply(401, ['message' => 'Signature invalide.']);
+if (!HapiditPayApi::validSignature($header, $raw, HapiditPayPages::secret('HAPIDITPAY_WEBHOOK_SECRET'))) {
+    hapiditpay_reply(401, ['message' => 'Signature invalide.']);
 }
 
 $event = json_decode($raw, true);
@@ -78,15 +78,15 @@ $name = is_array($event) && isset($event['evenement']) ? (string) $event['evenem
 $data = is_array($event) && isset($event['data']) && is_array($event['data']) ? $event['data'] : [];
 
 if ($name === 'test.ping') {
-    hapipay_reply(200, ['ok' => true]);
+    hapiditpay_reply(200, ['ok' => true]);
 }
 
-$pages = new HapiPayPages($db);
+$pages = new HapiditPayPages($db);
 $page = $pages->find(isset($data['reference']) ? (string) $data['reference'] : '');
 if (!$page || (int) $page->entity !== (int) $conf->entity) {
     // Pas une page de ce Dolibarr (une boutique sur le même compte, par exemple) :
     // on accuse réception pour éviter les relances.
-    hapipay_reply(200, ['ignore' => true]);
+    hapiditpay_reply(200, ['ignore' => true]);
 }
 
 $result = 'ok';
@@ -98,9 +98,9 @@ switch ($name) {
     case 'paiement.expire':
     case 'paiement.a_verifier':
         // Rien n'est enregistré : le client peut réessayer depuis le lien de paiement.
-        $db->query('UPDATE ' . MAIN_DB_PREFIX . "hapipay_page SET note = '" . $db->escape($name) . "' WHERE rowid = " . ((int) $page->rowid) . " AND status = 'ouvert'");
+        $db->query('UPDATE ' . MAIN_DB_PREFIX . "hapiditpay_page SET note = '" . $db->escape($name) . "' WHERE rowid = " . ((int) $page->rowid) . " AND status = 'ouvert'");
         break;
 }
 
-// Une erreur d'enregistrement est signalée à HapiPay, qui relancera le webhook.
-hapipay_reply($result === 'erreur' ? 500 : 200, ['ok' => $result !== 'erreur', 'resultat' => $result]);
+// Une erreur d'enregistrement est signalée à HapiditPay, qui relancera le webhook.
+hapiditpay_reply($result === 'erreur' ? 500 : 200, ['ok' => $result !== 'erreur', 'resultat' => $result]);

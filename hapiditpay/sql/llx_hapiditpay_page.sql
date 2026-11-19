@@ -1,12 +1,12 @@
--- Pages de paiement HapiPay créées par le module : une par tentative de
+-- Pages de paiement HapiditPay créées par le module : une par tentative de
 -- paiement d'une facture ou d'un don. Sert à retrouver la pièce au retour
 -- du webhook, à vérifier le montant et à ne jamais enregistrer deux fois
 -- le même paiement.
 --
--- Copyright (C) HapiPay
+-- Copyright (C) Hapidit Group
 -- Licence GPL-3.0-or-later
 
-CREATE TABLE llx_hapipay_page(
+CREATE TABLE llx_hapiditpay_page(
 	rowid integer AUTO_INCREMENT PRIMARY KEY NOT NULL,
 	entity integer DEFAULT 1 NOT NULL,
 	reference varchar(191) NOT NULL,

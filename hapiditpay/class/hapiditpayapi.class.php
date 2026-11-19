@@ -1,21 +1,21 @@
 <?php
 /**
- * Appels à l'API HapiPay : page de paiement à usage unique, état d'une page,
+ * Appels à l'API HapiditPay : page de paiement à usage unique, état d'une page,
  * vérification de la clé et de la signature des webhooks.
  *
  * @license GPL-3.0-or-later
  */
-if (!defined('DOL_VERSION') && !defined('HAPIPAY_TESTS')) {
+if (!defined('DOL_VERSION') && !defined('HAPIDITPAY_TESTS')) {
     exit;
 }
 
-class HapiPayApi
+class HapiditPayApi
 {
     /** Adresse de l'API de production, utilisée quand le réglage est vide. */
-    const DEFAULT_URL = 'https://pay.scigroup.td/api/v1';
+    const DEFAULT_URL = 'https://hapiditpay.com/api/v1';
 
     /** Version du module, envoyée dans l'en-tête User-Agent. */
-    const VERSION = '0.1.0';
+    const VERSION = '0.2.0';
 
     /** @var string */
     private $baseUrl;
@@ -31,7 +31,7 @@ class HapiPayApi
     }
 
     /**
-     * Adresse d'une page du site HapiPay (inscription, espace du marchand),
+     * Adresse d'une page du site HapiditPay (inscription, espace du marchand),
      * déduite de l'adresse de l'API : elle suit l'instance configurée.
      */
     public function siteUrl($path = '')
@@ -41,14 +41,14 @@ class HapiPayApi
         return $path === '' ? $root : $root . '/' . ltrim((string) $path, '/');
     }
 
-    /** Clé de test (hpc_test_…) : tous les paiements sont simulés. */
+    /** Clé de test (hdp_test_…) : tous les paiements sont simulés. */
     public function isTest()
     {
-        return strpos($this->apiKey, 'hpc_test_') === 0;
+        return strpos($this->apiKey, 'hdp_test_') === 0;
     }
 
     /**
-     * Montant HapiPay écrit pour une personne : « 25 000 FCFA » pour les francs
+     * Montant HapiditPay écrit pour une personne : « 25 000 FCFA » pour les francs
      * CFA (XAF et XOF), le code ISO pour les autres devises (« 5 000 MGA »).
      */
     public static function formatAmount($amount, $currency)
@@ -86,7 +86,7 @@ class HapiPayApi
     private function request($method, $path, ?array $body = null)
     {
         if ($this->baseUrl === '' || $this->apiKey === '') {
-            return ['ok' => false, 'status' => 0, 'data' => [], 'message' => 'HapiPay n\'est pas configuré : adresse de l\'API et clé requises.'];
+            return ['ok' => false, 'status' => 0, 'data' => [], 'message' => 'HapiditPay n\'est pas configuré : adresse de l\'API et clé requises.'];
         }
 
         $ch = curl_init($this->baseUrl . $path);
@@ -94,7 +94,7 @@ class HapiPayApi
             'Authorization: Bearer ' . $this->apiKey,
             'Accept: application/json',
             'Content-Type: application/json',
-            'User-Agent: HapiPay-Dolibarr/' . self::VERSION,
+            'User-Agent: HapiditPay-Dolibarr/' . self::VERSION,
         ];
         curl_setopt_array($ch, [
             CURLOPT_CUSTOMREQUEST => $method,
@@ -114,7 +114,7 @@ class HapiPayApi
             $error = curl_error($ch);
             curl_close($ch);
 
-            return ['ok' => false, 'status' => 0, 'data' => [], 'message' => 'HapiPay injoignable : ' . $error];
+            return ['ok' => false, 'status' => 0, 'data' => [], 'message' => 'HapiditPay injoignable : ' . $error];
         }
 
         $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -124,19 +124,19 @@ class HapiPayApi
         $ok = $status >= 200 && $status < 300;
 
         if ($status >= 300 && $status < 400) {
-            return ['ok' => false, 'status' => $status, 'data' => [], 'message' => 'HapiPay a répondu par une redirection (' . $status . ') : vérifiez l\'adresse de l\'API, en HTTPS, par exemple ' . self::DEFAULT_URL . '.'];
+            return ['ok' => false, 'status' => $status, 'data' => [], 'message' => 'HapiditPay a répondu par une redirection (' . $status . ') : vérifiez l\'adresse de l\'API, en HTTPS, par exemple ' . self::DEFAULT_URL . '.'];
         }
 
         return [
             'ok' => $ok,
             'status' => $status,
             'data' => isset($json['data']) && is_array($json['data']) ? $json['data'] : [],
-            'message' => $ok ? '' : (isset($json['message']) ? (string) $json['message'] : 'HapiPay a répondu ' . $status . '.'),
+            'message' => $ok ? '' : (isset($json['message']) ? (string) $json['message'] : 'HapiditPay a répondu ' . $status . '.'),
         ];
     }
 
     /**
-     * Vérifie l'en-tête HapiPay-Signature : t=<horodatage>,v1=<hmac>[,v1=<hmac>].
+     * Vérifie l'en-tête HapiditPay-Signature : t=<horodatage>,v1=<hmac>[,v1=<hmac>].
      * Deux v1 pendant les 24 h qui suivent un changement de secret.
      */
     public static function validSignature($header, $rawBody, $secret, $tolerance = 300)

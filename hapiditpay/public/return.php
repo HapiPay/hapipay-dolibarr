@@ -1,10 +1,10 @@
 <?php
 /**
- * Retour du client après la page HapiPay. Si le webhook n'est pas encore
- * arrivé, l'état de la page est demandé à HapiPay (de serveur à serveur),
+ * Retour du client après la page HapiditPay. Si le webhook n'est pas encore
+ * arrivé, l'état de la page est demandé à HapiditPay (de serveur à serveur),
  * puis le client voit où en est son paiement.
  *
- * Copyright (C) HapiPay
+ * Copyright (C) Hapidit Group
  * @license GPL-3.0-or-later
  */
 
@@ -37,20 +37,20 @@ if (!$res) {
 
 require_once DOL_DOCUMENT_ROOT . '/core/lib/company.lib.php';
 require_once DOL_DOCUMENT_ROOT . '/core/lib/payments.lib.php';
-require_once __DIR__ . '/../class/hapipaypages.class.php';
+require_once __DIR__ . '/../class/hapiditpaypages.class.php';
 
-$langs->loadLangs(['main', 'bills', 'hapipay@hapipay']);
+$langs->loadLangs(['main', 'bills', 'hapiditpay@hapiditpay']);
 
-if (!isModEnabled('hapipay')) {
-    httponly_accessforbidden('Module HapiPay désactivé.');
+if (!isModEnabled('hapiditpay')) {
+    httponly_accessforbidden('Module HapiditPay désactivé.');
 }
 
-$pages = new HapiPayPages($db);
+$pages = new HapiditPayPages($db);
 $page = $pages->find(GETPOST('r', 'aZ09arobase'));
 
-// Le paramètre ?paiement=… ajouté par HapiPay n'est qu'une indication : on demande l'état à HapiPay.
+// Le paramètre ?paiement=… ajouté par HapiditPay n'est qu'une indication : on demande l'état à HapiditPay.
 if ($page && (int) $page->entity === (int) $conf->entity && $page->status === 'ouvert') {
-    $state = HapiPayPages::api()->linkState($page->code);
+    $state = HapiditPayPages::api()->linkState($page->code);
     if ($state['ok'] && ($state['data']['etat'] ?? '') === 'paye') {
         $pages->recordPayment($page, [
             'id' => $state['data']['paiement'] ?? $page->code,
@@ -63,10 +63,10 @@ if ($page && (int) $page->entity === (int) $conf->entity && $page->status === 'o
 
 $status = $page ? (string) $page->status : '';
 [$title, $text] = match ($status) {
-    'paye' => [$langs->trans('HapiPayReturnPaidTitle'), $langs->trans('HapiPayReturnPaidText')],
-    'ecart' => [$langs->trans('HapiPayReturnCheckTitle'), $langs->trans('HapiPayReturnCheckText')],
-    'ouvert' => [$langs->trans('HapiPayReturnWaitingTitle'), $langs->trans('HapiPayReturnWaitingText')],
-    default => [$langs->trans('HapiPayReturnUnknownTitle'), $langs->trans('HapiPayReturnUnknownText')],
+    'paye' => [$langs->trans('HapiditPayReturnPaidTitle'), $langs->trans('HapiditPayReturnPaidText')],
+    'ecart' => [$langs->trans('HapiditPayReturnCheckTitle'), $langs->trans('HapiditPayReturnCheckText')],
+    'ouvert' => [$langs->trans('HapiditPayReturnWaitingTitle'), $langs->trans('HapiditPayReturnWaitingText')],
+    default => [$langs->trans('HapiditPayReturnUnknownTitle'), $langs->trans('HapiditPayReturnUnknownText')],
 };
 
 // Lien vers la page de paiement de Dolibarr : facture ou don, avec sa clé de sécurité.
@@ -110,10 +110,10 @@ print '<div style="border: 1px solid #d9dee5; border-radius: 14px; padding: 24px
 print '<p style="font-size: 1.25em; font-weight: 700; color: ' . $colour . '; margin: 0 0 8px;">' . dol_escape_htmltag($title) . '</p>';
 print '<p style="margin: 0;">' . dol_escape_htmltag($text) . '</p>';
 if ($page) {
-    print '<p class="opacitymedium" style="margin: 16px 0 0;">' . dol_escape_htmltag(HapiPayApi::formatAmount($page->amount, $page->currency)) . ($page->transaction_id ? ' · ' . dol_escape_htmltag($page->transaction_id) : '') . '</p>';
+    print '<p class="opacitymedium" style="margin: 16px 0 0;">' . dol_escape_htmltag(HapiditPayApi::formatAmount($page->amount, $page->currency)) . ($page->transaction_id ? ' · ' . dol_escape_htmltag($page->transaction_id) : '') . '</p>';
 }
 if ($back !== '') {
-    print '<p style="margin: 20px 0 0;"><a class="button" href="' . dol_escape_htmltag($back) . '">' . dol_escape_htmltag($langs->trans('HapiPayBackToPayment')) . '</a></p>';
+    print '<p style="margin: 20px 0 0;"><a class="button" href="' . dol_escape_htmltag($back) . '">' . dol_escape_htmltag($langs->trans('HapiditPayBackToPayment')) . '</a></p>';
 }
 print '</div></div>';
 

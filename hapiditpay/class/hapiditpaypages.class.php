@@ -1,20 +1,20 @@
 <?php
 /**
- * Pages de paiement HapiPay des factures et des dons, et enregistrement du
- * règlement dans Dolibarr quand HapiPay confirme le paiement.
+ * Pages de paiement HapiditPay des factures et des dons, et enregistrement du
+ * règlement dans Dolibarr quand HapiditPay confirme le paiement.
  *
- * Copyright (C) HapiPay
+ * Copyright (C) Hapidit Group
  * @license GPL-3.0-or-later
  */
 
-require_once __DIR__ . '/hapipayapi.class.php';
+require_once __DIR__ . '/hapiditpayapi.class.php';
 
-class HapiPayPages
+class HapiditPayPages
 {
-    /** Pièces payables par HapiPay : source de la page publique de Dolibarr => type. */
+    /** Pièces payables par HapiditPay : source de la page publique de Dolibarr => type. */
     const SOURCES = ['invoice' => 'fac', 'donation' => 'don'];
 
-    /** Langues de la page HapiPay. */
+    /** Langues de la page HapiditPay. */
     const LANGUAGES = ['fr', 'en', 'ar', 'mg', 'es'];
 
     /** @var DoliDB */
@@ -31,7 +31,7 @@ class HapiPayPages
     /** Client de l'API, avec la clé déchiffrée. */
     public static function api()
     {
-        return new HapiPayApi(getDolGlobalString('HAPIPAY_API_URL'), self::secret('HAPIPAY_API_KEY'));
+        return new HapiditPayApi(getDolGlobalString('HAPIDITPAY_API_URL'), self::secret('HAPIDITPAY_API_KEY'));
     }
 
     /** Réglage secret, enregistré chiffré par la page de configuration. */
@@ -45,10 +45,10 @@ class HapiPayPages
         return (string) $value;
     }
 
-    /** Une clé d'API est enregistrée : le bouton HapiPay peut s'afficher. */
+    /** Une clé d'API est enregistrée : le bouton HapiditPay peut s'afficher. */
     public static function configured()
     {
-        return getDolGlobalString('HAPIPAY_API_KEY') !== '';
+        return getDolGlobalString('HAPIDITPAY_API_KEY') !== '';
     }
 
     public static function supports($source)
@@ -57,7 +57,7 @@ class HapiPayPages
     }
 
     /**
-     * Préfixe propre à cette installation de Dolibarr : un même compte HapiPay
+     * Préfixe propre à cette installation de Dolibarr : un même compte HapiditPay
      * peut servir une boutique et un Dolibarr sans que leurs références se mêlent.
      */
     public static function instanceTag()
@@ -70,7 +70,7 @@ class HapiPayPages
     }
 
     /**
-     * Crée la page HapiPay d'une facture ou d'un don et renvoie son adresse.
+     * Crée la page HapiditPay d'une facture ou d'un don et renvoie son adresse.
      * Montant : le reste à payer, ou le montant demandé s'il est plus petit.
      *
      * @return array{ok: bool, url: string, message: string}
@@ -81,7 +81,7 @@ class HapiPayPages
 
         $object = $this->load($source, $ref);
         if (!$object) {
-            return $this->failure($langs->trans('HapiPayUnknownObject'));
+            return $this->failure($langs->trans('HapiditPayUnknownObject'));
         }
 
         $remaining = (float) price2num($object->getRemainToPay(), 'MT');
@@ -92,22 +92,22 @@ class HapiPayPages
         }
 
         if ($amount <= 0) {
-            return $this->failure($langs->trans('HapiPayNothingToPay'));
+            return $this->failure($langs->trans('HapiditPayNothingToPay'));
         }
-        // HapiPay compte en unités entières de la devise (FCFA, ariary, francs congolais…).
+        // HapiditPay compte en unités entières de la devise (FCFA, ariary, francs congolais…).
         if (abs($amount - round($amount)) > 0.001) {
-            return $this->failure($langs->trans('HapiPayNoCents'));
+            return $this->failure($langs->trans('HapiditPayNoCents'));
         }
 
         $currency = strtoupper((string) $conf->currency);
         if ($source === 'invoice' && !empty($object->multicurrency_code) && strtoupper($object->multicurrency_code) !== $currency) {
-            return $this->failure($langs->trans('HapiPayOtherCurrency', $object->multicurrency_code, $currency));
+            return $this->failure($langs->trans('HapiditPayOtherCurrency', $object->multicurrency_code, $currency));
         }
 
         $reference = 'dol-' . self::instanceTag() . '-' . self::SOURCES[$source] . '-' . (int) $object->id . '-' . strtolower(substr(bin2hex(random_bytes(4)), 0, 6));
         $title = $source === 'invoice'
-            ? $langs->transnoentitiesnoconv('HapiPayTitleInvoice', $object->ref)
-            : $langs->transnoentitiesnoconv('HapiPayTitleDonation', $object->ref ?: $object->id);
+            ? $langs->transnoentitiesnoconv('HapiditPayTitleInvoice', $object->ref)
+            : $langs->transnoentitiesnoconv('HapiditPayTitleDonation', $object->ref ?: $object->id);
         $lang = substr((string) $langs->defaultlang, 0, 2);
 
         $api = self::api();
@@ -118,37 +118,37 @@ class HapiPayPages
             'montant' => (int) round($amount),
             'devise' => $currency,
             'usage_unique' => true,
-            'url_retour' => dol_buildpath('/hapipay/public/return.php', 2) . '?r=' . urlencode($reference) . '&e=' . ((int) $conf->entity),
+            'url_retour' => dol_buildpath('/hapiditpay/public/return.php', 2) . '?r=' . urlencode($reference) . '&e=' . ((int) $conf->entity),
             'langue' => in_array($lang, self::LANGUAGES, true) ? $lang : null,
         ]);
 
         if (!$link['ok'] || empty($link['data']['url']) || empty($link['data']['code'])) {
-            dol_syslog('HapiPay : page de paiement non créée pour ' . $source . ' ' . $object->id . ' (' . $link['message'] . ')', LOG_ERR);
+            dol_syslog('HapiditPay : page de paiement non créée pour ' . $source . ' ' . $object->id . ' (' . $link['message'] . ')', LOG_ERR);
 
             return $this->failure($link['status'] === 422 && $link['message'] !== ''
-                ? $langs->trans('HapiPayRefused', HapiPayApi::plain($link['message']))
-                : $langs->trans('HapiPayUnavailable'));
+                ? $langs->trans('HapiditPayRefused', HapiditPayApi::plain($link['message']))
+                : $langs->trans('HapiditPayUnavailable'));
         }
 
-        $sql = 'INSERT INTO ' . MAIN_DB_PREFIX . 'hapipay_page (entity, reference, code, url, source, fk_object, amount, currency, test, status, datec) VALUES ('
+        $sql = 'INSERT INTO ' . MAIN_DB_PREFIX . 'hapiditpay_page (entity, reference, code, url, source, fk_object, amount, currency, test, status, datec) VALUES ('
             . ((int) $conf->entity) . ", '" . $this->db->escape($reference) . "', '" . $this->db->escape((string) $link['data']['code']) . "', '"
             . $this->db->escape((string) $link['data']['url']) . "', '" . $this->db->escape($source) . "', " . ((int) $object->id) . ', '
             . ((int) round($amount)) . ", '" . $this->db->escape($currency) . "', " . ($api->isTest() ? 1 : 0) . ", 'ouvert', '" . $this->db->idate(dol_now()) . "')";
         if (!$this->db->query($sql)) {
-            return $this->failure($langs->trans('HapiPayUnavailable'));
+            return $this->failure($langs->trans('HapiditPayUnavailable'));
         }
 
         return ['ok' => true, 'url' => (string) $link['data']['url'], 'message' => ''];
     }
 
-    /** Page HapiPay connue de ce Dolibarr, d'après sa référence. */
+    /** Page HapiditPay connue de ce Dolibarr, d'après sa référence. */
     public function find($reference)
     {
         if (!preg_match('/^dol-[0-9a-f]{6}-(fac|don)-\d+-[0-9a-z]+$/', (string) $reference)) {
             return null;
         }
 
-        $resql = $this->db->query('SELECT * FROM ' . MAIN_DB_PREFIX . "hapipay_page WHERE reference = '" . $this->db->escape((string) $reference) . "'");
+        $resql = $this->db->query('SELECT * FROM ' . MAIN_DB_PREFIX . "hapiditpay_page WHERE reference = '" . $this->db->escape((string) $reference) . "'");
 
         return $resql ? ($this->db->fetch_object($resql) ?: null) : null;
     }
@@ -159,7 +159,7 @@ class HapiPayPages
         global $conf;
 
         $rows = [];
-        $resql = $this->db->query('SELECT * FROM ' . MAIN_DB_PREFIX . 'hapipay_page WHERE entity = ' . ((int) $conf->entity) . ' ORDER BY rowid DESC' . $this->db->plimit((int) $limit));
+        $resql = $this->db->query('SELECT * FROM ' . MAIN_DB_PREFIX . 'hapiditpay_page WHERE entity = ' . ((int) $conf->entity) . ' ORDER BY rowid DESC' . $this->db->plimit((int) $limit));
         while ($resql && ($row = $this->db->fetch_object($resql))) {
             $rows[] = $row;
         }
@@ -168,11 +168,11 @@ class HapiPayPages
     }
 
     /**
-     * Paiement confirmé par HapiPay (webhook signé, ou état demandé à l'API au
+     * Paiement confirmé par HapiditPay (webhook signé, ou état demandé à l'API au
      * retour du client) : règlement enregistré une seule fois, pièce classée
      * payée si plus rien n'est dû, écriture sur le compte bancaire choisi.
      *
-     * @param object $page   Ligne de llx_hapipay_page
+     * @param object $page   Ligne de llx_hapiditpay_page
      * @param array  $data   id (transaction), montant, devise, operateur
      * @return string paye | deja | ecart | erreur
      */
@@ -183,8 +183,8 @@ class HapiPayPages
 
         // Le montant et la devise doivent être ceux de la page : sinon rien n'est enregistré.
         if ((int) ($data['montant'] ?? -1) !== (int) $page->amount || strtoupper((string) ($data['devise'] ?? '')) !== strtoupper($page->currency)) {
-            $this->db->query('UPDATE ' . MAIN_DB_PREFIX . "hapipay_page SET status = 'ecart', transaction_id = '" . $this->db->escape($transaction) . "', note = '"
-                . $this->db->escape('Montant ou devise différent : ' . HapiPayApi::formatAmount($data['montant'] ?? 0, $data['devise'] ?? '')) . "' WHERE rowid = " . ((int) $page->rowid) . " AND status = 'ouvert'");
+            $this->db->query('UPDATE ' . MAIN_DB_PREFIX . "hapiditpay_page SET status = 'ecart', transaction_id = '" . $this->db->escape($transaction) . "', note = '"
+                . $this->db->escape('Montant ou devise différent : ' . HapiditPayApi::formatAmount($data['montant'] ?? 0, $data['devise'] ?? '')) . "' WHERE rowid = " . ((int) $page->rowid) . " AND status = 'ouvert'");
 
             return 'ecart';
         }
@@ -192,7 +192,7 @@ class HapiPayPages
         $this->db->begin();
 
         // Verrou : seul le premier (webhook ou retour du client) passe la page à « payé ».
-        $resql = $this->db->query('UPDATE ' . MAIN_DB_PREFIX . "hapipay_page SET status = 'paye', transaction_id = '" . $this->db->escape($transaction) . "', operator = '"
+        $resql = $this->db->query('UPDATE ' . MAIN_DB_PREFIX . "hapiditpay_page SET status = 'paye', transaction_id = '" . $this->db->escape($transaction) . "', operator = '"
             . $this->db->escape($operator) . "' WHERE rowid = " . ((int) $page->rowid) . " AND status = 'ouvert'");
         if (!$resql || $this->db->affected_rows($resql) !== 1) {
             $this->db->rollback();
@@ -208,21 +208,21 @@ class HapiPayPages
             $this->db->rollback();
             // La page reste ouverte : la relance du webhook pourra enregistrer le
             // règlement une fois le problème corrigé. La note le signale en attendant.
-            $this->db->query('UPDATE ' . MAIN_DB_PREFIX . "hapipay_page SET transaction_id = '" . $this->db->escape($transaction) . "', note = 'Paiement reçu par HapiPay, règlement pas encore enregistré dans Dolibarr' WHERE rowid = " . ((int) $page->rowid) . " AND status = 'ouvert'");
+            $this->db->query('UPDATE ' . MAIN_DB_PREFIX . "hapiditpay_page SET transaction_id = '" . $this->db->escape($transaction) . "', note = 'Paiement reçu par HapiditPay, règlement pas encore enregistré dans Dolibarr' WHERE rowid = " . ((int) $page->rowid) . " AND status = 'ouvert'");
 
             return 'erreur';
         }
 
-        $this->db->query('UPDATE ' . MAIN_DB_PREFIX . 'hapipay_page SET fk_payment = ' . ((int) $paymentId) . ' WHERE rowid = ' . ((int) $page->rowid));
+        $this->db->query('UPDATE ' . MAIN_DB_PREFIX . 'hapiditpay_page SET fk_payment = ' . ((int) $paymentId) . ' WHERE rowid = ' . ((int) $page->rowid));
         $this->db->commit();
 
         return 'paye';
     }
 
-    /** Note du règlement : transaction HapiPay et opérateur. */
+    /** Note du règlement : transaction HapiditPay et opérateur. */
     private function noteFor($page, $transaction, $operator)
     {
-        return 'HapiPay ' . $transaction . ($operator !== '' ? ' (' . $operator . ')' : '') . ($page->test ? ' - paiement simulé, mode test' : '');
+        return 'HapiditPay ' . $transaction . ($operator !== '' ? ' (' . $operator . ')' : '') . ($page->test ? ' - paiement simulé, mode test' : '');
     }
 
     private function payInvoice($page, $transaction, $operator)
@@ -243,12 +243,12 @@ class HapiPayPages
         $payment->note_public = $this->noteFor($page, $transaction, $operator);
         $payment->note_private = $payment->note_public;
         $payment->ext_payment_id = $transaction;
-        $payment->ext_payment_site = 'HapiPay';
+        $payment->ext_payment_site = 'HapiditPay';
 
         // Classe la facture payée quand plus rien n'est dû.
         $id = $payment->create($this->user(), 1);
         if ($id <= 0) {
-            dol_syslog('HapiPay : règlement de facture refusé par Dolibarr (' . $payment->error . ')', LOG_ERR);
+            dol_syslog('HapiditPay : règlement de facture refusé par Dolibarr (' . $payment->error . ')', LOG_ERR);
 
             return -1;
         }
@@ -275,11 +275,11 @@ class HapiPayPages
         $payment->num_payment = $transaction;
         $payment->note_public = $this->noteFor($page, $transaction, $operator);
         $payment->ext_payment_id = $transaction;
-        $payment->ext_payment_site = 'HapiPay';
+        $payment->ext_payment_site = 'HapiditPay';
 
         $id = $payment->create($this->user(), 1);
         if ($id <= 0) {
-            dol_syslog('HapiPay : règlement de don refusé par Dolibarr (' . $payment->error . ')', LOG_ERR);
+            dol_syslog('HapiditPay : règlement de don refusé par Dolibarr (' . $payment->error . ')', LOG_ERR);
 
             return -1;
         }
@@ -298,13 +298,13 @@ class HapiPayPages
     /** Écriture sur le compte bancaire réglé (celui du compte opérateur), si la banque est active. */
     private function toBank($payment, $mode, $label)
     {
-        $account = getDolGlobalInt('HAPIPAY_BANK_ACCOUNT');
+        $account = getDolGlobalInt('HAPIDITPAY_BANK_ACCOUNT');
         if (!isModEnabled('bank') || $account <= 0) {
             return true;
         }
 
         if ($payment->addPaymentToBank($this->user(), $mode, $label, $account, '', '') < 0) {
-            dol_syslog('HapiPay : écriture bancaire refusée par Dolibarr (' . $payment->error . ')', LOG_ERR);
+            dol_syslog('HapiditPay : écriture bancaire refusée par Dolibarr (' . $payment->error . ')', LOG_ERR);
 
             return false;
         }
@@ -312,10 +312,10 @@ class HapiPayPages
         return true;
     }
 
-    /** Mode de règlement réglé, sinon « HapiPay (mobile money) » créé à l'activation. */
+    /** Mode de règlement réglé, sinon « HapiditPay (mobile money) » créé à l'activation. */
     private function paymentTypeId()
     {
-        $id = getDolGlobalInt('HAPIPAY_PAYMENT_MODE');
+        $id = getDolGlobalInt('HAPIDITPAY_PAYMENT_MODE');
         if ($id > 0) {
             return $id;
         }
